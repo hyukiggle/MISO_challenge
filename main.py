@@ -198,6 +198,8 @@ if __name__ == '__main__':
 
     # model
     vgg16_ft = models.vgg16_bn(pretrained=True)
+    for param in vgg16_ft.parameters():
+        param.requires_grad = False
     vgg16_ft.features[0] = nn.Conv2d(9,64,kernel_size=(3,3),stride=1,padding=(1,1))
     num_ftrs = vgg16_ft.classifier[6].in_features
     vgg16_ft.classifier[6] = nn.Linear(num_ftrs,10)
