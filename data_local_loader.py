@@ -7,7 +7,7 @@ import pandas as pd
 from PIL import Image
 import torch
 
-def get_transform(random_crop=True):
+def get_transform(random_crop=False):
     normalize = transforms.Normalize(
         mean=[x / 255.0 for x in [125.3, 123.0, 113.9]],
         std=[x / 255.0 for x in [63.0, 62.1, 66.7]])
