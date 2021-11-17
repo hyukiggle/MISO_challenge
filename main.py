@@ -209,6 +209,7 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # model
+    '''
     vgg16_ft = models.vgg16_bn(pretrained=True)
     for param in vgg16_ft.parameters():
         param.requires_grad = False
@@ -218,10 +219,18 @@ if __name__ == '__main__':
     vgg16_ft = vgg16_ft.to(device)
 
     efficientnet = efficientnet = models.efficientnet_b0(pretrained=True)
-
+    '''
+    resnet_50 = models.resnet50(pretrained=True)
+    for param in resnet_50.parameters():
+        param.requires_grad = False
+    resnet_50.features[0] = nn.Conv2d(9,64,kernel_size=(3,3),stride=1,padding=(1,1))
+    num_ftrs = resnet_50.classifier[6].in_features
+    resnet_50.classifier[6] = nn.Linear(num_ftrs,10)
+    resnet_50 = resnet_50.to(device) 
+    
     # optimizer
-    optimizer = optim.SGD(vgg16_ft.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
-#   optimizer = optim.Adam(params, lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+    # optimizer = optim.SGD(vgg16_ft.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
+    optimizer = optim.Adam(vgg16_ft.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 
     # criterion
     criterion = nn.CrossEntropyLoss()
