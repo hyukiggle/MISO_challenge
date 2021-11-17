@@ -29,6 +29,18 @@ except:
     TRAIN_DATASET_PATH = os.path.join('train')
     VAL_DATASET_PATH = None
 
+class LabelSmoothLoss(nn.Module):
+    def __init__(self, smoothing=0.0):
+        super(LabelSmoothLoss, self).__init__()
+        self.smoothing = smoothing
+    
+    def forward(self, input, target):
+        log_prob = F.log_softmax(input, dim=-1)
+        weight = input.new_ones(input.size()) * \
+            self.smoothing / (input.size(-1) - 1.)
+        weight.scatter_(-1, target.unsqueeze(-1), (1. - self.smoothing))
+        loss = (-weight * log_prob).sum(dim=-1).mean()
+        return loss
 
 def validate(epoch, model):
     global best_acc
@@ -209,8 +221,7 @@ if __name__ == '__main__':
 
     # optimizer
     optimizer = optim.SGD(vgg16_ft.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
-    optimizer = optim.Adam()
-
+#   optimizer = optim.Adam(params, lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
 
     # criterion
     criterion = nn.CrossEntropyLoss()
