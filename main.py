@@ -16,7 +16,7 @@ import torchvision.models as models
 import argparse
 from data_local_loader import test_data_loader, data_loader_with_split
 from tqdm import tqdm
-
+import torch.nn.functional as F
 
 
 try:
@@ -62,13 +62,13 @@ def validate(epoch, model):
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
 
-        print('Validation: Epoch=%d, Loss=%.3f, Acc=%.3f' % (epoch, valid_loss / total,  correct / total))
+        print('Validation: Epoch=%d, Loss=%.3f, Acc=%.3f' % (epoch+1, valid_loss / total,  correct / total))
 
 
     # Save checkpoint.
     acc = correct / total
     if acc > best_acc:
-        # print('Saving..')
+        print('Saving..')
         state = {
             'net': model.state_dict(),
             'acc': acc,
@@ -115,7 +115,7 @@ def train(epoch,model):
         )
 
         nsml.save(str(epoch + 1))
-    print('Training   Epoch=%d, Loss=%.3f, Acc=%.3f' % (epoch, train_loss / total, correct / total))
+    print('Training   Epoch=%d, Loss=%.3f, Acc=%.3f' % (epoch+1, train_loss / total, correct / total))
 
 def _infer(model, root_path):
 
@@ -204,8 +204,6 @@ if __name__ == '__main__':
     batch_size = config.batch_size
     mode = config.mode
 
-
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # model
@@ -213,41 +211,50 @@ if __name__ == '__main__':
     vgg16_ft = models.vgg16_bn(pretrained=True)
     for param in vgg16_ft.parameters():
         param.requires_grad = False
+    
     vgg16_ft.features[0] = nn.Conv2d(9,64,kernel_size=(3,3),stride=1,padding=(1,1))
     num_ftrs = vgg16_ft.classifier[6].in_features
     vgg16_ft.classifier[6] = nn.Linear(num_ftrs,10)
     vgg16_ft = vgg16_ft.to(device)
-
-    efficientnet = efficientnet = models.efficientnet_b0(pretrained=True)
     '''
-    resnet_50 = models.resnet50(pretrained=True)
-    for param in resnet_50.parameters():
-        param.requires_grad = False
-    resnet_50.features[0] = nn.Conv2d(9,64,kernel_size=(3,3),stride=1,padding=(1,1))
-    num_ftrs = resnet_50.classifier[6].in_features
-    resnet_50.classifier[6] = nn.Linear(num_ftrs,10)
-    resnet_50 = resnet_50.to(device) 
+
+    resnext101 = models.resnext101_32x8d(pretrained= True)
+    for param in resnext101.parameters():
+        param.requried_grad = False
+    resnext101.conv1 = nn.Conv2d(9,64,kernel_size=(3,3),stride=2,padding=(1,1))
+    num_ftrs = resnext101.fc.in_features
+    resnext101.fc = nn.Linear(num_ftrs,10)
+    resnext101 = resnext101.to(device)
+    '''
+    densenet201 = models.densenet201(pretrained = True, progress=True)
+    for param in densenet201.parameters():
+        param.requried_grad = False
+    densenet201.features[0] = nn.Conv2d(9,64,kernel_size=(3,3),stride=2,padding=(1,1))
+    num_ftrs = resnedensenet201xt101.fc.in_features
+    densenet201.fc = nn.Linear(num_ftrs,10)
+    densenet201 = densenet201.to(device)
+    '''
     
     # optimizer
-    # optimizer = optim.SGD(vgg16_ft.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
-    optimizer = optim.Adam(vgg16_ft.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
-
+    # optimizer = optim.SGD(resnext101.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
+    optimizer = optim.Adam(resnext101.parameters(), lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
     # criterion
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
+    
+    criterion = LabelSmoothLoss(0.1)
 
-    #lr 
+    #lr sceduler
     # lmbda = lambda epoch: 0.65 ** epoch
     # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lmbda)
-
     # scheduler = torch.optim.lr_scheduler.MultiplicativeLR(optimizer, lr_lambda=lmbda)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.1)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6,8,9], gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5,8], gamma=0.1)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=0)
     # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.1)
     # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.001, max_lr=0.1,step_size_up=5,mode="exp_range",gamma=0.85)
 
+    model = resnext101
 
-    model = vgg16_ft
     # model = efficientnet
     if IS_ON_NSML:
         bind_model(model, optimizer)
@@ -257,7 +264,7 @@ if __name__ == '__main__':
         
     if config.mode =='train':
         # epoch times
-        epoch_times = 30
+        epoch_times = 10
         start_epoch = 0
 
         best_acc = 0
