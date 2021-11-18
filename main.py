@@ -2,8 +2,10 @@ import os
 import math
 import datetime
 import copy
+from re import VERBOSE
 import numpy as np
 import time
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -207,39 +209,21 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # model
-    '''
-    vgg16_ft = models.vgg16_bn(pretrained=True)
-    for param in vgg16_ft.parameters():
-        param.requires_grad = False
     
-    vgg16_ft.features[0] = nn.Conv2d(9,64,kernel_size=(3,3),stride=1,padding=(1,1))
-    num_ftrs = vgg16_ft.classifier[6].in_features
-    vgg16_ft.classifier[6] = nn.Linear(num_ftrs,10)
-    vgg16_ft = vgg16_ft.to(device)
-    '''
+    wideresnet50 = models.wide_resnet50_2(pretrained = False, progress = True)
+    for param in wideresnet50.parameters():
+        param.requried_grad = False
+        
+    wideresnet50.conv1 = nn.Conv2d(9,64,kernel_size=(3,3),stride=2,padding=(1,1))
+    num_ftrs = wideresnet50.fc.in_features
+    wideresnet50.fc = nn.Linear(num_ftrs,10)
+    wideresnet50 = wideresnet50.to(device)
 
-    resnext101 = models.resnext101_32x8d(pretrained= True)
-    for param in resnext101.parameters():
-        param.requried_grad = False
-    resnext101.conv1 = nn.Conv2d(9,64,kernel_size=(3,3),stride=2,padding=(1,1))
-    num_ftrs = resnext101.fc.in_features
-    resnext101.fc = nn.Linear(num_ftrs,10)
-    resnext101 = resnext101.to(device)
-    '''
-    densenet201 = models.densenet201(pretrained = True, progress=True)
-    for param in densenet201.parameters():
-        param.requried_grad = False
-    densenet201.features[0] = nn.Conv2d(9,64,kernel_size=(3,3),stride=2,padding=(1,1))
-    num_ftrs = resnedensenet201xt101.fc.in_features
-    densenet201.fc = nn.Linear(num_ftrs,10)
-    densenet201 = densenet201.to(device)
-    '''
-    
     # optimizer
     # optimizer = optim.SGD(resnext101.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
-    optimizer = optim.Adam(resnext101.parameters(), lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+    optimizer = optim.Adam(wideresnet50.parameters(), lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
     # criterion
-    # criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss(size_average=False)
     
     criterion = LabelSmoothLoss(0.1)
 
@@ -248,13 +232,12 @@ if __name__ == '__main__':
     # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lmbda)
     # scheduler = torch.optim.lr_scheduler.MultiplicativeLR(optimizer, lr_lambda=lmbda)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.1)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5,8], gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10,20], gamma=0.1)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=0)
     # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.1)
     # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.001, max_lr=0.1,step_size_up=5,mode="exp_range",gamma=0.85)
 
-    model = resnext101
-
+    model = wideresnet50
     # model = efficientnet
     if IS_ON_NSML:
         bind_model(model, optimizer)
@@ -264,7 +247,7 @@ if __name__ == '__main__':
         
     if config.mode =='train':
         # epoch times
-        epoch_times = 10
+        epoch_times = 30
         start_epoch = 0
 
         best_acc = 0
