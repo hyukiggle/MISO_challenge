@@ -19,7 +19,7 @@ import argparse
 from data_local_loader import test_data_loader, data_loader_with_split
 from tqdm import tqdm
 import torch.nn.functional as F
-
+from RexNet import ReXNetV1
 
 try:
     import nsml
@@ -180,7 +180,7 @@ if __name__ == '__main__':
 
     # mode argument
     args = argparse.ArgumentParser()
-    args.add_argument("--train_split", type=float, default=0.9)
+    args.add_argument("--train_split", type=float, default=0.95)
     args.add_argument("--num_classes", type=int, default=6)
     args.add_argument("--lr", type=int, default=0.001)
     args.add_argument("--cuda", type=bool, default=True)
@@ -211,33 +211,37 @@ if __name__ == '__main__':
     # model
     
     wideresnet50 = models.wide_resnet50_2(pretrained = False, progress = True)
-    for param in wideresnet50.parameters():
-        param.requried_grad = False
-        
-    wideresnet50.conv1 = nn.Conv2d(9,64,kernel_size=(3,3),stride=2,padding=(1,1))
+    wideresnet50.conv1 = nn.Conv2d(9,64,kernel_size=(7,7),stride=(2,2),padding=(3,3),bias=False)
+    wideresnet50.layer2.add_module('dropout2',nn.Dropout(0.3))
+    wideresnet50.layer4.add_module('dropout4',nn.Dropout(0.3))
     num_ftrs = wideresnet50.fc.in_features
     wideresnet50.fc = nn.Linear(num_ftrs,10)
     wideresnet50 = wideresnet50.to(device)
-
+    
+    model = wideresnet50
+    model = model.to(device)
+    
     # optimizer
     # optimizer = optim.SGD(resnext101.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
-    optimizer = optim.Adam(wideresnet50.parameters(), lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
+    optimizer = optim.Adam(model.parameters(), lr=0.1, betas=(0.9, 0.999), eps=1e-08, weight_decay=0, amsgrad=False)
     # criterion
     # criterion = nn.CrossEntropyLoss(size_average=False)
     
-    criterion = LabelSmoothLoss(0.1)
+    criterion = LabelSmoothLoss(0.1).to(device)
 
     #lr sceduler
     # lmbda = lambda epoch: 0.65 ** epoch
     # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lmbda)
     # scheduler = torch.optim.lr_scheduler.MultiplicativeLR(optimizer, lr_lambda=lmbda)
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.1)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10,20], gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15,20,25], gamma=0.1)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=0)
     # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.1)
     # scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.001, max_lr=0.1,step_size_up=5,mode="exp_range",gamma=0.85)
-
-    model = wideresnet50
+    
+    
+    print(model)
+    # model = wideresnet50
     # model = efficientnet
     if IS_ON_NSML:
         bind_model(model, optimizer)
@@ -257,7 +261,7 @@ if __name__ == '__main__':
                 train_split=train_split,
                 batch_size = batch_size
             )
-
+        
         for epoch in range(start_epoch, start_epoch + epoch_times):
             train(epoch,model)
             scheduler.step()
