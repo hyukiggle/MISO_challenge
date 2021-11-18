@@ -8,59 +8,19 @@ from PIL import Image
 import torch
 import numpy as np
 
-class Cutout(object):
-    """Randomly mask out one or more patches from an image.
-
-    Args:
-        n_holes (int): Number of patches to cut out of each image.
-        length (int): The length (in pixels) of each square patch.
-    """
-    def __init__(self, n_holes, length):
-        self.n_holes = n_holes
-        self.length = length
-
-    def __call__(self, img):
-        """
-        Args:
-            img (Tensor): Tensor image of size (C, H, W).
-        Returns:
-            Tensor: Image with n_holes of dimension length x length cut out of it.
-        """
-        h = img.size(1)
-        w = img.size(2)
-
-        mask = np.ones((h, w), np.float32)
-
-        for n in range(self.n_holes):
-            y = np.random.randint(h)
-            x = np.random.randint(w)
-
-            y1 = np.clip(y - self.length // 2, 0, h)
-            y2 = np.clip(y + self.length // 2, 0, h)
-            x1 = np.clip(x - self.length // 2, 0, w)
-            x2 = np.clip(x + self.length // 2, 0, w)
-
-            mask[y1: y2, x1: x2] = 0.
-
-        mask = torch.from_numpy(mask)
-        mask = mask.expand_as(img)
-        img = img * mask
-
-        return img
-
 def get_transform(random_crop=True):
     normalize = transforms.Normalize(
         mean=[x / 255.0 for x in [125.3, 123.0, 113.9]],
         std=[x / 255.0 for x in [63.0, 62.1, 66.7]])
     transform = []
     if random_crop:
-        transform.append(transforms.CenterCrop(800))
+        transform.append(transforms.CenterCrop(size=(700,900)))
         # transform.append(transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5))
         # transform.append(transforms.Grayscale(num_output_channels=1))
         # transform.append(transforms.RandomRotation(30))
 
     else:
-        transform.append(transforms.CenterCrop(800))
+        transform.append(transforms.CenterCrop(size=(700,900)))
         # transform.append(transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5))
         # transform.append(transforms.Grayscale(num_output_channels=1))
         # transform.append(transforms.RandomRotation(20))
@@ -70,7 +30,6 @@ def get_transform(random_crop=True):
     # transform.append(Cutout(n_holes=1, length=112))
     transform.append(normalize)
     return transforms.Compose(transform)
-
 
 
 class CustomDataset(data.Dataset):
@@ -130,7 +89,7 @@ class TestDataset(data.Dataset):
 
         return img_id, image
 
-def test_data_loader(root, phase='train', batch_size=128):
+def test_data_loader(root, phase='train', batch_size=64):
     if phase == 'train':
         is_train = False
     elif phase == 'test':
@@ -147,7 +106,7 @@ def test_data_loader(root, phase='train', batch_size=128):
                            shuffle=is_train)
 
 
-def data_loader_with_split(root, train_split=0.95, batch_size=128, val_label_file='./val_label'):
+def data_loader_with_split(root, train_split=0.95, batch_size=64, val_label_file='./val_label'):
     if root[-1]=='/':
         mode = root.split('/')[-2]
     else:
