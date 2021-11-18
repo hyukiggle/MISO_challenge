@@ -55,10 +55,17 @@ def get_transform(random_crop=True):
     transform = []
     if random_crop:
         transform.append(transforms.CenterCrop(800))
-        
+        # transform.append(transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5))
+        # transform.append(transforms.Grayscale(num_output_channels=1))
+        # transform.append(transforms.RandomRotation(30))
+
     else:
         transform.append(transforms.CenterCrop(800))
-    transform.append(transforms.Resize(224))
+        # transform.append(transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5))
+        # transform.append(transforms.Grayscale(num_output_channels=1))
+        # transform.append(transforms.RandomRotation(20))
+        
+    transform.append(transforms.Resize(400))
     transform.append(transforms.ToTensor())
     # transform.append(Cutout(n_holes=1, length=112))
     transform.append(normalize)
@@ -123,7 +130,7 @@ class TestDataset(data.Dataset):
 
         return img_id, image
 
-def test_data_loader(root, phase='train', batch_size=64):
+def test_data_loader(root, phase='train', batch_size=128):
     if phase == 'train':
         is_train = False
     elif phase == 'test':
@@ -140,7 +147,7 @@ def test_data_loader(root, phase='train', batch_size=64):
                            shuffle=is_train)
 
 
-def data_loader_with_split(root, train_split=0.9, batch_size=64, val_label_file='./val_label'):
+def data_loader_with_split(root, train_split=0.95, batch_size=128, val_label_file='./val_label'):
     if root[-1]=='/':
         mode = root.split('/')[-2]
     else:
